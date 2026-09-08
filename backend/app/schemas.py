@@ -41,4 +41,8 @@ class RepositoryMetadata(BaseModel):
 
 class RepositoryTreeResponse(BaseModel):
     total_files: int
-    important_files: list[str]        
+    important_files: list[str] 
+
+class RepositoryTechnologyResponse(BaseModel):
+    important_files: list[str]
+    technologies: list[str]           

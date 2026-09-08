@@ -1,5 +1,5 @@
 from urllib.parse import urlparse
-
+import base64
 import httpx
 
 
@@ -83,6 +83,11 @@ async def get_repository_tree(
 
     owner, repo = parse_github_url(repository_url)
 
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "RootCause-AI",
+    }
+
     metadata_url = (
         f"{GITHUB_API_BASE}/repos/{owner}/{repo}"
     )
@@ -91,9 +96,7 @@ async def get_repository_tree(
 
         metadata_response = await client.get(
             metadata_url,
-            headers={
-                "Accept": "application/vnd.github+json"
-            }
+            headers=headers,
         )
 
         if metadata_response.status_code == 404:
@@ -110,22 +113,27 @@ async def get_repository_tree(
         tree_url = (
             f"{GITHUB_API_BASE}/repos/"
             f"{owner}/{repo}/git/trees/"
-            f"{default_branch}?recursive=1"
+            f"{default_branch}"
         )
 
         tree_response = await client.get(
             tree_url,
-            headers={
-                "Accept": "application/vnd.github+json"
-            }
+            params={
+                "recursive": "1"
+            },
+            headers=headers,
         )
 
-        tree_response.raise_for_status()
+        if tree_response.status_code != 200:
+            raise RuntimeError(
+                f"GitHub tree API returned "
+                f"{tree_response.status_code}: "
+                f"{tree_response.text}"
+            )
 
-    tree_data = tree_response.json()
+        tree_data = tree_response.json()
 
     return tree_data.get("tree", [])
-
 
 IMPORTANT_FILENAMES = {
     "package.json",
@@ -163,3 +171,43 @@ def detect_important_files(
             important_files.append(path)
 
     return important_files
+
+async def get_file_content(
+    repository_url: str,
+    file_path: str,
+) -> str:
+    owner, repo = parse_github_url(repository_url)
+
+    url = (
+        f"{GITHUB_API_BASE}/repos/"
+        f"{owner}/{repo}/contents/{file_path}"
+    )
+
+    async with httpx.AsyncClient(timeout=20.0) as client:
+        response = await client.get(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json"
+            },
+        )
+
+    if response.status_code == 404:
+        raise GitHubRepositoryNotFoundError(
+            f"File not found: {file_path}"
+        )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    encoded_content = data.get("content")
+
+    if not encoded_content:
+        return ""
+
+    decoded = base64.b64decode(encoded_content)
+
+    return decoded.decode(
+        "utf-8",
+        errors="ignore",
+    )
