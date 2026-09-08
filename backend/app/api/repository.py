@@ -6,6 +6,8 @@ from app.schemas import (
     RepositoryTreeResponse,
     RepositoryTechnologyResponse,
     RepositoryGraphResponse,
+    GraphDiagnosisRequest,
+    GraphDiagnosisResponse,
 )
 
 from app.services.github_service import (
@@ -27,6 +29,10 @@ from app.services.graph_builder import (
 
 from app.services.docker_compose_analyzer import (
     analyze_docker_compose,
+)
+
+from app.services.error_graph_matcher import (
+    match_error_to_graph,
 )
 
 router = APIRouter(
@@ -336,3 +342,134 @@ async def repository_graph(
             status_code=502,
             detail=f"Failed to build repository graph: {str(exc)}",
         ) from exc
+
+@router.post(
+    "/diagnose",
+    response_model=GraphDiagnosisResponse,
+)
+async def diagnose_repository_error(
+    request: GraphDiagnosisRequest,
+):
+    try:
+        repository_url = str(
+            request.repository_url
+        )
+
+        tree = await get_repository_tree(
+            repository_url
+        )
+
+        important_files = detect_important_files(
+            tree
+        )
+
+        technologies = set()
+
+        compose_graph = {
+            "nodes": [],
+            "edges": [],
+        }
+
+        for file_path in important_files:
+
+            content = await get_file_content(
+                repository_url,
+                file_path,
+            )
+
+            detected = analyze_file(
+                file_path,
+                content,
+            )
+
+            technologies.update(detected)
+
+            filename = file_path.split("/")[-1]
+
+            if filename in {
+                "docker-compose.yml",
+                "docker-compose.yaml",
+                "compose.yml",
+                "compose.yaml",
+                "compose.override.yml",
+                "compose.override.yaml",
+                "compose.deploy.yml",
+                "compose.deploy.yaml",
+            }:
+                parsed_compose = (
+                    analyze_docker_compose(
+                        content
+                    )
+                )
+
+                compose_graph["nodes"].extend(
+                    parsed_compose["nodes"]
+                )
+
+                compose_graph["edges"].extend(
+                    parsed_compose["edges"]
+                )
+
+        unique_nodes = {}
+
+        for node in compose_graph["nodes"]:
+            unique_nodes[node["id"]] = node
+
+        unique_edges = {}
+
+        for edge in compose_graph["edges"]:
+            key = (
+                edge["source"],
+                edge["target"],
+                edge["type"],
+            )
+
+            unique_edges[key] = edge
+
+        compose_graph = {
+            "nodes": list(
+                unique_nodes.values()
+            ),
+            "edges": list(
+                unique_edges.values()
+            ),
+        }
+
+        graph = build_graph(
+            sorted(technologies),
+            compose_graph,
+        )
+
+        diagnosis = match_error_to_graph(
+            request.error_text,
+            graph,
+        )
+
+        return GraphDiagnosisResponse(
+            **diagnosis
+        )
+
+    except InvalidGitHubUrlError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+    except GitHubRepositoryNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except Exception as exc:
+        print("GRAPH DIAGNOSIS ERROR:")
+        print(type(exc).__name__)
+        print(str(exc))
+
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"Failed to diagnose repository: "
+                f"{str(exc)}"
+            ),
+        ) from exc        

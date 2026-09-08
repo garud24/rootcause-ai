@@ -61,4 +61,23 @@ class GraphEdge(BaseModel):
 
 class RepositoryGraphResponse(BaseModel):
     nodes: list[GraphNode]
-    edges: list[GraphEdge]             
+    edges: list[GraphEdge]     
+    
+class GraphDiagnosisRequest(BaseModel):
+    repository_url: HttpUrl
+    error_text: str = Field(
+        ...,
+        min_length=3,
+        max_length=20_000,
+    )
+
+
+class GraphDiagnosisResponse(BaseModel):
+    matched: bool
+    affected_node: str | None
+    technology: str | None
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+    reason: str            
