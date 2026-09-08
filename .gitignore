@@ -1,0 +1,31 @@
+# Python virtual environments
+backend/venv/
+.venv/
+venv/
+
+# Python caches and generated files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Frontend dependencies and build output
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# IDE settings
+.idea/
