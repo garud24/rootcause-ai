@@ -25,47 +25,45 @@ async def analyze_with_ollama(
     {repository_context}
 """
     prompt = f"""
-You are RootCause AI, a software debugging assistant.
+You are RootCause AI.
 
-Analyze the following application error.
+Analyze the provided application error and return a JSON diagnosis.
+
+Use repository context when provided.
+Do not invent infrastructure that is not supported by the evidence.
+Repository evidence is stronger than generic assumptions.
+
+Preserve exact IP addresses, ports, hostnames, and service names.
+
+If deterministic diagnostic evidence is provided:
+
+- Treat exact runtime hosts, ports, configured hosts, configured ports,
+  and boolean comparison results as authoritative.
+- Do not change or rewrite exact IP addresses, hostnames, ports,
+  service names, or boolean values.
+- Prefer the narrowest root cause directly supported by the evidence.
+- If hostname_mismatch is true, identify the hostname/configuration
+  mismatch as the primary root cause.
+- Do not claim that a service is stopped, crashed, or unavailable unless
+  the provided evidence explicitly proves it.
+- Possible causes that are not proven should be described as possibilities
+  in the explanation, recommended fixes, or verification steps.
+- Separate confirmed evidence from likely interpretations.
 
 Error:
 {error_text}
 
 {context_section}
 
-Return ONLY valid JSON with exactly these fields:
-
+Return JSON only with exactly these fields:
 {{
-  "root_cause": "string",
-  "confidence": 0.0,
-  "explanation": "string",
-  "evidence": ["string"],
-  "recommended_fixes": ["string"],
-  "verification_steps": ["string"]
+    "root_cause": "string",
+    "confidence": 0.0,
+    "explanation": "string",
+    "evidence": ["string"],
+    "recommended_fixes": ["string"],
+    "verification_steps": ["string"]
 }}
-
-Rules:
-
-1. Use the repository context when it is provided.
-2. Do not invent infrastructure that is not supported by the context.
-3. Treat the repository context as stronger evidence than generic assumptions.
-4. Preserve exact technical values from the error such as:
-   - IP addresses
-   - ports
-   - hostnames
-   - service names
-5. If the repository contains a Docker Compose service, prefer repository-specific
-   fixes over generic operating-system service commands.
-6. Clearly distinguish between:
-   - confirmed evidence
-   - likely interpretation
-7. If evidence is insufficient, lower confidence rather than guessing.
-8. Do not include markdown.
-9. Return JSON only.
-10. If repository configuration shows a service hostname that differs from the
-hostname in the runtime error, explicitly identify this as a possible
-configuration mismatch.
 """
 
     payload = {
