@@ -28,6 +28,11 @@ from app.services.configuration_analyzer import (
     extract_compose_configuration,
 )
 
+from app.services.evidence_analyzer import (
+    build_diagnostic_evidence,
+)
+
+
 COMPOSE_FILENAMES = {
     "docker-compose.yml",
     "docker-compose.yaml",
@@ -39,21 +44,25 @@ COMPOSE_FILENAMES = {
     "compose.deploy.yaml",
 }
 
+
 def build_repository_context(
     technologies: list[str],
     graph: dict,
     graph_diagnosis: dict,
     configuration_evidence: list[str],
+    diagnostic_evidence: dict,
 ) -> str:
 
     lines = []
 
+    # 1. Detected technologies
     if technologies:
         lines.append(
             "Detected technologies: "
             + ", ".join(technologies)
         )
 
+    # 2. Graph diagnosis
     affected_node = graph_diagnosis.get(
         "affected_node"
     )
@@ -84,11 +93,15 @@ def build_repository_context(
         f"{graph_confidence}"
     )
 
+    # 3. Relevant architecture relationships
     if affected_node:
 
         relevant_edges = []
 
-        for edge in graph.get("edges", []):
+        for edge in graph.get(
+            "edges",
+            [],
+        ):
 
             if (
                 edge.get("source")
@@ -96,7 +109,9 @@ def build_repository_context(
                 or edge.get("target")
                 == affected_node
             ):
-                relevant_edges.append(edge)
+                relevant_edges.append(
+                    edge
+                )
 
         if relevant_edges:
 
@@ -111,18 +126,87 @@ def build_repository_context(
                     f"--{edge['type']}--> "
                     f"{edge['target']}"
                 )
-            
-            if configuration_evidence:
-                
-                lines.append(
-                    "Repository configuration evidence:"
-                )
-                for item in configuration_evidence:
-                    lines.append(
-                        f"- {item}"
-                    )    
+
+    # 4. Repository configuration evidence
+    if configuration_evidence:
+
+        lines.append(
+            "Repository configuration evidence:"
+        )
+
+        for item in configuration_evidence:
+
+            lines.append(
+                f"- {item}"
+            )
+
+    # 5. Deterministic diagnostic evidence
+    lines.append(
+        "Deterministic diagnostic evidence:"
+    )
+
+    runtime_host = diagnostic_evidence.get(
+        "runtime_host"
+    )
+
+    runtime_port = diagnostic_evidence.get(
+        "runtime_port"
+    )
+
+    configured_host = diagnostic_evidence.get(
+        "configured_host"
+    )
+
+    configured_port = diagnostic_evidence.get(
+        "configured_port"
+    )
+
+    hostname_mismatch = diagnostic_evidence.get(
+        "hostname_mismatch"
+    )
+
+    port_matches = diagnostic_evidence.get(
+        "port_matches"
+    )
+
+    if runtime_host:
+        lines.append(
+            f"- Runtime host: "
+            f"{runtime_host}"
+        )
+
+    if runtime_port is not None:
+        lines.append(
+            f"- Runtime port: "
+            f"{runtime_port}"
+        )
+
+    if configured_host:
+        lines.append(
+            f"- Configured database host: "
+            f"{configured_host}"
+        )
+
+    if configured_port is not None:
+        lines.append(
+            f"- Configured database port: "
+            f"{configured_port}"
+        )
+
+    if hostname_mismatch is not None:
+        lines.append(
+            f"- Hostname mismatch: "
+            f"{hostname_mismatch}"
+        )
+
+    if port_matches is not None:
+        lines.append(
+            f"- Port matches: "
+            f"{port_matches}"
+        )
 
     return "\n".join(lines)
+
 
 async def diagnose_repository(
     repository_url: str,
@@ -140,7 +224,9 @@ async def diagnose_repository(
     )
 
     technologies = set()
+
     configuration_evidence = []
+
     compose_graph = {
         "nodes": [],
         "edges": [],
@@ -159,11 +245,15 @@ async def diagnose_repository(
             content,
         )
 
-        technologies.update(detected)
+        technologies.update(
+            detected
+        )
 
-        filename = file_path.split("/")[-1]
+        filename = file_path.split(
+            "/"
+        )[-1]
 
-        # 4. Parse Docker Compose
+        # 4. Parse Docker Compose files
         if filename in COMPOSE_FILENAMES:
 
             parsed_compose = (
@@ -172,16 +262,27 @@ async def diagnose_repository(
                 )
             )
 
-            compose_graph["nodes"].extend(
-                parsed_compose["nodes"]
+            compose_graph[
+                "nodes"
+            ].extend(
+                parsed_compose[
+                    "nodes"
+                ]
             )
 
-            compose_graph["edges"].extend(
-                parsed_compose["edges"]
+            compose_graph[
+                "edges"
+            ].extend(
+                parsed_compose[
+                    "edges"
+                ]
             )
+
+            # Extract useful configuration
+            # evidence from Compose
             config_evidence = (
-            extract_compose_configuration(
-            content
+                extract_compose_configuration(
+                    content
                 )
             )
 
@@ -189,23 +290,33 @@ async def diagnose_repository(
                 config_evidence
             )
 
-    # 5. Remove duplicate nodes
+    # 5. Remove duplicate graph nodes
     unique_nodes = {}
 
-    for node in compose_graph["nodes"]:
-        unique_nodes[node["id"]] = node
+    for node in compose_graph[
+        "nodes"
+    ]:
 
-    # 6. Remove duplicate edges
+        unique_nodes[
+            node["id"]
+        ] = node
+
+    # 6. Remove duplicate graph edges
     unique_edges = {}
 
-    for edge in compose_graph["edges"]:
+    for edge in compose_graph[
+        "edges"
+    ]:
+
         key = (
             edge["source"],
             edge["target"],
             edge["type"],
         )
 
-        unique_edges[key] = edge
+        unique_edges[
+            key
+        ] = edge
 
     compose_graph = {
         "nodes": list(
@@ -218,66 +329,117 @@ async def diagnose_repository(
 
     # 7. Build final architecture graph
     graph = build_graph(
-        sorted(technologies),
+        sorted(
+            technologies
+        ),
         compose_graph,
     )
 
-    # 8. Match error to graph
-    graph_diagnosis = match_error_to_graph(
-        error_text,
-        graph,
+    # 8. Match runtime error
+    # to graph node
+    graph_diagnosis = (
+        match_error_to_graph(
+            error_text,
+            graph,
+        )
     )
 
-    # 9. Ask Ollama for root-cause analysis
-    repository_context = build_repository_context(
-    technologies=sorted(technologies),
-    graph=graph,
-    graph_diagnosis=graph_diagnosis,
-    configuration_evidence=configuration_evidence,
-    )
-    print("REPOSITORY CONTEXT SENT TO OLLAMA:")
-    print(repository_context)
-    
-    llm_analysis = await analyze_with_ollama(
-    error_text=error_text,
-    repository_context=repository_context,
+    # 9. Build deterministic
+    # diagnostic evidence
+    diagnostic_evidence = (
+        build_diagnostic_evidence(
+            error_text=error_text,
+            configuration_evidence=
+                configuration_evidence,
+            graph=graph,
+            graph_diagnosis=
+                graph_diagnosis,
+        )
     )
 
+    # 10. Build repository context
+    # for Ollama
+    repository_context = (
+        build_repository_context(
+            technologies=sorted(
+                technologies
+            ),
+            graph=graph,
+            graph_diagnosis=
+                graph_diagnosis,
+            configuration_evidence=
+                configuration_evidence,
+            diagnostic_evidence=
+                diagnostic_evidence,
+        )
+    )
 
-    # 10. Merge everything
+    print(
+        "REPOSITORY CONTEXT SENT TO OLLAMA:"
+    )
+
+    print(
+        repository_context
+    )
+
+    # 11. Ask Ollama for
+    # root-cause reasoning
+    llm_analysis = (
+        await analyze_with_ollama(
+            error_text=error_text,
+            repository_context=
+                repository_context,
+        )
+    )
+
+    # 12. Merge LLM analysis
+    # with deterministic graph results
     return {
-        "root_cause": llm_analysis[
-            "root_cause"
-        ],
-        "confidence": llm_analysis[
-            "confidence"
-        ],
-        "explanation": llm_analysis[
-            "explanation"
-        ],
-        "evidence": llm_analysis[
-            "evidence"
-        ],
-        "recommended_fixes": llm_analysis[
-            "recommended_fixes"
-        ],
-        "verification_steps": llm_analysis[
-            "verification_steps"
-        ],
+        "root_cause":
+            llm_analysis[
+                "root_cause"
+            ],
 
-        "affected_node": graph_diagnosis[
-            "affected_node"
-        ],
-        "affected_technology": (
+        "confidence":
+            llm_analysis[
+                "confidence"
+            ],
+
+        "explanation":
+            llm_analysis[
+                "explanation"
+            ],
+
+        "evidence":
+            llm_analysis[
+                "evidence"
+            ],
+
+        "recommended_fixes":
+            llm_analysis[
+                "recommended_fixes"
+            ],
+
+        "verification_steps":
+            llm_analysis[
+                "verification_steps"
+            ],
+
+        "affected_node":
+            graph_diagnosis[
+                "affected_node"
+            ],
+
+        "affected_technology":
             graph_diagnosis[
                 "technology"
-            ]
-        ),
-        "graph_confidence": (
+            ],
+
+        "graph_confidence":
             graph_diagnosis[
                 "confidence"
-            ]
-        ),
+            ],
 
-        "graph": graph,
+        "graph":
+            graph,
     }
