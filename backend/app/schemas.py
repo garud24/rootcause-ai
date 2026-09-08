@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 
 class AnalyzeRequest(BaseModel):
@@ -8,15 +8,16 @@ class AnalyzeRequest(BaseModel):
         max_length=20_000,
         description="Error message, stack trace, or logs"
     )
+    repository_url: HttpUrl | None = Field(
+        default=None,
+        description="Optional GitHub repository URL"
+    )
 
 
 class AnalyzeResponse(BaseModel):
     root_cause: str
 
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0
-    )
+    confidence: float = Field(ge=0.0, le=1.0)
 
     explanation: str
 
@@ -25,3 +26,15 @@ class AnalyzeResponse(BaseModel):
     recommended_fixes: list[str]
 
     verification_steps: list[str]
+
+class RepositoryRequest(BaseModel):
+    repository_url: HttpUrl
+
+
+class RepositoryMetadata(BaseModel):
+    owner: str
+    repository: str
+    default_branch: str
+    language: str | None
+    private: bool
+    html_url: str    

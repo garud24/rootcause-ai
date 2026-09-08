@@ -1,5 +1,12 @@
 import json
+
 import httpx
+
+from app.services.exceptions import (
+    OllamaUnavailableError,
+    OllamaTimeoutError,
+    OllamaInvalidResponseError,
+)
 
 
 OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
@@ -14,7 +21,7 @@ Analyze the following error, logs, or stack trace:
 
 {error_text}
 
-Return ONLY valid JSON with exactly this structure:
+Return ONLY valid JSON in exactly this structure:
 
 {{
   "root_cause": "short root cause",
@@ -37,7 +44,7 @@ Rules:
 - confidence must be between 0 and 1
 - return JSON only
 - do not use markdown
-- do not add explanations outside the JSON
+- do not add text outside the JSON
 - do not invent evidence
 - if uncertain, lower the confidence score
 """
@@ -47,26 +54,39 @@ Rules:
         "prompt": prompt,
         "stream": False,
         "format": "json",
-        "think": False
+        "think": False,
     }
 
-    async with httpx.AsyncClient(timeout=120.0) as client:
-        response = await client.post(
-            OLLAMA_URL,
-            json=payload
-        )
+    try:
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            response = await client.post(
+                OLLAMA_URL,
+                json=payload,
+            )
 
-        response.raise_for_status()
+            response.raise_for_status()
 
-        data = response.json()
+    except httpx.ConnectError as exc:
+        raise OllamaUnavailableError(
+            "Could not connect to Ollama"
+        ) from exc
 
-    print("OLLAMA RAW RESPONSE:")
-    print(data)
+    except httpx.TimeoutException as exc:
+        raise OllamaTimeoutError(
+            "Ollama took too long to respond"
+        ) from exc
+
+    except httpx.HTTPStatusError as exc:
+        raise OllamaUnavailableError(
+            f"Ollama returned HTTP {exc.response.status_code}"
+        ) from exc
+
+    data = response.json()
 
     model_output = data.get("response", "").strip()
 
     if not model_output:
-        raise ValueError(
+        raise OllamaInvalidResponseError(
             "Ollama returned an empty response"
         )
 
@@ -74,6 +94,6 @@ Rules:
         return json.loads(model_output)
 
     except json.JSONDecodeError as exc:
-        raise ValueError(
-            f"Ollama returned invalid JSON: {model_output}"
+        raise OllamaInvalidResponseError(
+            "Ollama returned invalid JSON"
         ) from exc
