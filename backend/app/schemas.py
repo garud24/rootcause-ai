@@ -80,4 +80,41 @@ class GraphDiagnosisResponse(BaseModel):
         ge=0.0,
         le=1.0,
     )
-    reason: str            
+    reason: str     
+
+class RepositoryAnalysisRequest(BaseModel):
+    repository_url: HttpUrl
+
+    error_text: str = Field(
+        ...,
+        min_length=3,
+        max_length=20_000,
+    )
+
+
+class RepositoryAnalysisResponse(BaseModel):
+    root_cause: str
+
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    explanation: str
+
+    evidence: list[str]
+
+    recommended_fixes: list[str]
+
+    verification_steps: list[str]
+
+    affected_node: str | None
+
+    affected_technology: str | None
+
+    graph_confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+    )
+
+    graph: RepositoryGraphResponse           
