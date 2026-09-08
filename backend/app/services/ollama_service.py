@@ -63,6 +63,9 @@ Rules:
 7. If evidence is insufficient, lower confidence rather than guessing.
 8. Do not include markdown.
 9. Return JSON only.
+10. If repository configuration shows a service hostname that differs from the
+hostname in the runtime error, explicitly identify this as a possible
+configuration mismatch.
 """
 
     payload = {

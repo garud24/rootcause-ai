@@ -24,6 +24,9 @@ from app.services.ollama_service import (
     analyze_with_ollama,
 )
 
+from app.services.configuration_analyzer import (
+    extract_compose_configuration,
+)
 
 COMPOSE_FILENAMES = {
     "docker-compose.yml",
@@ -40,6 +43,7 @@ def build_repository_context(
     technologies: list[str],
     graph: dict,
     graph_diagnosis: dict,
+    configuration_evidence: list[str],
 ) -> str:
 
     lines = []
@@ -107,6 +111,16 @@ def build_repository_context(
                     f"--{edge['type']}--> "
                     f"{edge['target']}"
                 )
+            
+            if configuration_evidence:
+                
+                lines.append(
+                    "Repository configuration evidence:"
+                )
+                for item in configuration_evidence:
+                    lines.append(
+                        f"- {item}"
+                    )    
 
     return "\n".join(lines)
 
@@ -126,7 +140,7 @@ async def diagnose_repository(
     )
 
     technologies = set()
-
+    configuration_evidence = []
     compose_graph = {
         "nodes": [],
         "edges": [],
@@ -164,6 +178,15 @@ async def diagnose_repository(
 
             compose_graph["edges"].extend(
                 parsed_compose["edges"]
+            )
+            config_evidence = (
+            extract_compose_configuration(
+            content
+                )
+            )
+
+            configuration_evidence.extend(
+                config_evidence
             )
 
     # 5. Remove duplicate nodes
@@ -210,6 +233,7 @@ async def diagnose_repository(
     technologies=sorted(technologies),
     graph=graph,
     graph_diagnosis=graph_diagnosis,
+    configuration_evidence=configuration_evidence,
     )
     print("REPOSITORY CONTEXT SENT TO OLLAMA:")
     print(repository_context)
