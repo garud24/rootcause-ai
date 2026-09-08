@@ -142,8 +142,17 @@ IMPORTANT_FILENAMES = {
     "pom.xml",
     "build.gradle",
     "build.gradle.kts",
+
     "docker-compose.yml",
     "docker-compose.yaml",
+
+    "compose.yml",
+    "compose.yaml",
+    "compose.override.yml",
+    "compose.override.yaml",
+    "compose.deploy.yml",
+    "compose.deploy.yaml",
+
     "Dockerfile",
     ".env.example",
     "application.yml",

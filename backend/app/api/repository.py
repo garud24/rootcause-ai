@@ -25,6 +25,10 @@ from app.services.graph_builder import (
     build_graph,
 )
 
+from app.services.docker_compose_analyzer import (
+    analyze_docker_compose,
+)
+
 router = APIRouter(
     prefix="/api/repository",
     tags=["repository"],
@@ -234,7 +238,13 @@ async def repository_graph(
 
         technologies = set()
 
+        compose_graph = {
+            "nodes": [],
+            "edges": [],
+        }
+
         for file_path in important_files:
+
             content = await get_file_content(
                 repository_url,
                 file_path,
@@ -247,8 +257,58 @@ async def repository_graph(
 
             technologies.update(detected)
 
+            filename = file_path.split("/")[-1]
+
+            if filename in {
+                "docker-compose.yml",
+                "docker-compose.yaml",
+                "compose.yml",
+                "compose.yaml",
+                "compose.override.yml",
+                "compose.override.yaml",
+                "compose.deploy.yml",
+                "compose.deploy.yaml",
+            }:
+                parsed_compose = analyze_docker_compose(
+                    content
+                )
+
+                compose_graph["nodes"].extend(
+                    parsed_compose["nodes"]
+                )
+
+                compose_graph["edges"].extend(
+                    parsed_compose["edges"]
+                )
+
+        unique_nodes = {}
+
+        for node in compose_graph["nodes"]:
+            unique_nodes[node["id"]] = node
+
+        unique_edges = {}
+
+        for edge in compose_graph["edges"]:
+            key = (
+                edge["source"],
+                edge["target"],
+                edge["type"],
+            )
+
+            unique_edges[key] = edge
+
+        compose_graph = {
+            "nodes": list(
+                unique_nodes.values()
+            ),
+            "edges": list(
+                unique_edges.values()
+            ),
+        }
+
         graph = build_graph(
-            sorted(technologies)
+            sorted(technologies),
+            compose_graph,
         )
 
         return RepositoryGraphResponse(
@@ -275,4 +335,4 @@ async def repository_graph(
         raise HTTPException(
             status_code=502,
             detail=f"Failed to build repository graph: {str(exc)}",
-        ) from exc        
+        ) from exc
