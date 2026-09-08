@@ -124,6 +124,14 @@ def build_diagnostic_evidence(
                 relevant_edges.append(
                     edge
                 )
+    backend_depends_on_database = False
+
+    if affected_node:
+        backend_depends_on_database = has_dependency(
+            graph=graph,
+            source="backend",
+            target=affected_node,
+        )            
 
     return {
         "runtime_host": runtime_host,
@@ -144,4 +152,21 @@ def build_diagnostic_evidence(
 
         "relevant_edges":
             relevant_edges,
+        "backend_depends_on_database":
+            backend_depends_on_database,    
     }
+
+def has_dependency(
+    graph: dict,
+    source: str,
+    target: str,
+) -> bool:
+
+    for edge in graph.get("edges", []):
+        if (
+            edge.get("source") == source
+            and edge.get("target") == target
+        ):
+            return True
+
+    return False    
