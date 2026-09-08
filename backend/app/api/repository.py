@@ -5,6 +5,7 @@ from app.schemas import (
     RepositoryMetadata,
     RepositoryTreeResponse,
     RepositoryTechnologyResponse,
+    RepositoryGraphResponse,
 )
 
 from app.services.github_service import (
@@ -20,6 +21,9 @@ from app.services.repository_analyzer import (
     analyze_file,
 )
 
+from app.services.graph_builder import (
+    build_graph,
+)
 
 router = APIRouter(
     prefix="/api/repository",
@@ -207,3 +211,68 @@ async def repository_technologies(
                 f"{str(exc)}"
             ),
         ) from exc
+
+@router.post(
+    "/graph",
+    response_model=RepositoryGraphResponse,
+)
+async def repository_graph(
+    request: RepositoryRequest,
+):
+    try:
+        repository_url = str(
+            request.repository_url
+        )
+
+        tree = await get_repository_tree(
+            repository_url
+        )
+
+        important_files = detect_important_files(
+            tree
+        )
+
+        technologies = set()
+
+        for file_path in important_files:
+            content = await get_file_content(
+                repository_url,
+                file_path,
+            )
+
+            detected = analyze_file(
+                file_path,
+                content,
+            )
+
+            technologies.update(detected)
+
+        graph = build_graph(
+            sorted(technologies)
+        )
+
+        return RepositoryGraphResponse(
+            **graph
+        )
+
+    except InvalidGitHubUrlError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exc),
+        )
+
+    except GitHubRepositoryNotFoundError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail=str(exc),
+        )
+
+    except Exception as exc:
+        print("GRAPH BUILD ERROR:")
+        print(type(exc).__name__)
+        print(str(exc))
+
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to build repository graph: {str(exc)}",
+        ) from exc        

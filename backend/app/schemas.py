@@ -45,4 +45,20 @@ class RepositoryTreeResponse(BaseModel):
 
 class RepositoryTechnologyResponse(BaseModel):
     important_files: list[str]
-    technologies: list[str]           
+    technologies: list[str]  
+
+class GraphNode(BaseModel):
+    id: str
+    type: str
+    technology: str
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+    type: str
+
+
+class RepositoryGraphResponse(BaseModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]             
