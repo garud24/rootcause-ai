@@ -36,6 +36,79 @@ COMPOSE_FILENAMES = {
     "compose.deploy.yaml",
 }
 
+def build_repository_context(
+    technologies: list[str],
+    graph: dict,
+    graph_diagnosis: dict,
+) -> str:
+
+    lines = []
+
+    if technologies:
+        lines.append(
+            "Detected technologies: "
+            + ", ".join(technologies)
+        )
+
+    affected_node = graph_diagnosis.get(
+        "affected_node"
+    )
+
+    affected_technology = graph_diagnosis.get(
+        "technology"
+    )
+
+    graph_confidence = graph_diagnosis.get(
+        "confidence",
+        0.0,
+    )
+
+    if affected_node:
+        lines.append(
+            f"Suspected affected node: "
+            f"{affected_node}"
+        )
+
+    if affected_technology:
+        lines.append(
+            f"Suspected technology: "
+            f"{affected_technology}"
+        )
+
+    lines.append(
+        f"Graph match confidence: "
+        f"{graph_confidence}"
+    )
+
+    if affected_node:
+
+        relevant_edges = []
+
+        for edge in graph.get("edges", []):
+
+            if (
+                edge.get("source")
+                == affected_node
+                or edge.get("target")
+                == affected_node
+            ):
+                relevant_edges.append(edge)
+
+        if relevant_edges:
+
+            lines.append(
+                "Relevant architecture relationships:"
+            )
+
+            for edge in relevant_edges:
+
+                lines.append(
+                    f"- {edge['source']} "
+                    f"--{edge['type']}--> "
+                    f"{edge['target']}"
+                )
+
+    return "\n".join(lines)
 
 async def diagnose_repository(
     repository_url: str,
@@ -133,9 +206,19 @@ async def diagnose_repository(
     )
 
     # 9. Ask Ollama for root-cause analysis
-    llm_analysis = await analyze_with_ollama(
-        error_text
+    repository_context = build_repository_context(
+    technologies=sorted(technologies),
+    graph=graph,
+    graph_diagnosis=graph_diagnosis,
     )
+    print("REPOSITORY CONTEXT SENT TO OLLAMA:")
+    print(repository_context)
+    
+    llm_analysis = await analyze_with_ollama(
+    error_text=error_text,
+    repository_context=repository_context,
+    )
+
 
     # 10. Merge everything
     return {

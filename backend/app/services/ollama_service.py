@@ -13,40 +13,56 @@ OLLAMA_URL = "http://127.0.0.1:11434/api/generate"
 MODEL_NAME = "qwen3:4b"
 
 
-async def analyze_with_ollama(error_text: str) -> dict:
+async def analyze_with_ollama(
+    error_text: str,
+    repository_context: str | None = None,
+) -> dict:
+    context_section = ""
+
+    if repository_context:
+        context_section = f"""
+    Repository context:
+    {repository_context}
+"""
     prompt = f"""
 You are RootCause AI, a software debugging assistant.
 
-Analyze the following error, logs, or stack trace:
+Analyze the following application error.
 
+Error:
 {error_text}
 
-Return ONLY valid JSON in exactly this structure:
+{context_section}
+
+Return ONLY valid JSON with exactly these fields:
 
 {{
-  "root_cause": "short root cause",
+  "root_cause": "string",
   "confidence": 0.0,
-  "explanation": "clear technical explanation",
-  "evidence": [
-    "evidence from the provided error"
-  ],
-  "recommended_fixes": [
-    "fix 1",
-    "fix 2"
-  ],
-  "verification_steps": [
-    "step 1",
-    "step 2"
-  ]
+  "explanation": "string",
+  "evidence": ["string"],
+  "recommended_fixes": ["string"],
+  "verification_steps": ["string"]
 }}
 
 Rules:
-- confidence must be between 0 and 1
-- return JSON only
-- do not use markdown
-- do not add text outside the JSON
-- do not invent evidence
-- if uncertain, lower the confidence score
+
+1. Use the repository context when it is provided.
+2. Do not invent infrastructure that is not supported by the context.
+3. Treat the repository context as stronger evidence than generic assumptions.
+4. Preserve exact technical values from the error such as:
+   - IP addresses
+   - ports
+   - hostnames
+   - service names
+5. If the repository contains a Docker Compose service, prefer repository-specific
+   fixes over generic operating-system service commands.
+6. Clearly distinguish between:
+   - confirmed evidence
+   - likely interpretation
+7. If evidence is insufficient, lower confidence rather than guessing.
+8. Do not include markdown.
+9. Return JSON only.
 """
 
     payload = {
