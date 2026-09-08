@@ -37,4 +37,8 @@ class RepositoryMetadata(BaseModel):
     default_branch: str
     language: str | None
     private: bool
-    html_url: str    
+    html_url: str
+
+class RepositoryTreeResponse(BaseModel):
+    total_files: int
+    important_files: list[str]        
