@@ -2,29 +2,11 @@
 
 import { useState } from "react";
 
-type AnalysisResult = {
-  root_cause: string;
-  confidence: number;
-  explanation: string;
-  evidence: string[];
-  recommended_fixes: string[];
-  verification_steps: string[];
-  affected_node: string | null;
-  affected_technology: string | null;
-  graph_confidence: number;
-  graph: {
-    nodes: {
-      id: string;
-      type: string;
-      technology: string;
-    }[];
-    edges: {
-      source: string;
-      target: string;
-      type: string;
-    }[];
-  };
-};
+import RepositoryInput from "@/components/RepositoryInput";
+import ErrorInput from "@/components/ErrorInput";
+import AnalysisPanel from "@/components/AnalysisPanel";
+
+import { AnalysisResult } from "@/types/analysis";
 
 export default function Home() {
   const [repositoryUrl, setRepositoryUrl] =
@@ -101,41 +83,18 @@ export default function Home() {
         </p>
 
         <div className="mt-10 space-y-6">
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              GitHub Repository
-            </label>
 
-            <input
-              type="text"
-              value={repositoryUrl}
-              onChange={(event) =>
-                setRepositoryUrl(
-                  event.target.value
-                )
-              }
-              placeholder="https://github.com/owner/repository"
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 outline-none focus:border-gray-500"
-            />
-          </div>
+          {/* Repository input component */}
+          <RepositoryInput
+            value={repositoryUrl}
+            onChange={setRepositoryUrl}
+          />
 
-          <div>
-            <label className="mb-2 block text-sm font-medium">
-              Error or Stack Trace
-            </label>
-
-            <textarea
-              value={errorText}
-              onChange={(event) =>
-                setErrorText(
-                  event.target.value
-                )
-              }
-              placeholder="Error: connect ECONNREFUSED 127.0.0.1:5432"
-              rows={8}
-              className="w-full rounded-lg border border-gray-700 bg-gray-900 px-4 py-3 font-mono outline-none focus:border-gray-500"
-            />
-          </div>
+          {/* Error input component */}
+          <ErrorInput
+            value={errorText}
+            onChange={setErrorText}
+          />
 
           <button
             onClick={handleAnalyze}
@@ -157,86 +116,15 @@ export default function Home() {
             </div>
           )}
 
+          {/* Analysis result component */}
           {result && (
-            <div className="mt-10 space-y-6">
-              <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-                <h2 className="text-xl font-semibold">
-                  Root Cause
-                </h2>
-
-                <p className="mt-3 text-lg">
-                  {result.root_cause}
-                </p>
-
-                <p className="mt-2 text-sm text-gray-400">
-                  Confidence:{" "}
-                  {Math.round(
-                    result.confidence *
-                      100
-                  )}
-                  %
-                </p>
-              </section>
-
-              <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-                <h2 className="text-xl font-semibold">
-                  Explanation
-                </h2>
-
-                <p className="mt-3 text-gray-300">
-                  {result.explanation}
-                </p>
-              </section>
-
-              <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-                <h2 className="text-xl font-semibold">
-                  Evidence
-                </h2>
-
-                <ul className="mt-3 list-disc space-y-2 pl-6 text-gray-300">
-                  {result.evidence.map(
-                    (item, index) => (
-                      <li key={index}>
-                        {item}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </section>
-
-              <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-                <h2 className="text-xl font-semibold">
-                  Recommended Fixes
-                </h2>
-
-                <ul className="mt-3 list-disc space-y-2 pl-6 text-gray-300">
-                  {result.recommended_fixes.map(
-                    (item, index) => (
-                      <li key={index}>
-                        {item}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </section>
-
-              <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-                <h2 className="text-xl font-semibold">
-                  Verification Steps
-                </h2>
-
-                <ul className="mt-3 list-disc space-y-2 pl-6 text-gray-300">
-                  {result.verification_steps.map(
-                    (item, index) => (
-                      <li key={index}>
-                        {item}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </section>
+            <div className="mt-10">
+              <AnalysisPanel
+                result={result}
+              />
             </div>
           )}
+
         </div>
       </div>
     </main>
