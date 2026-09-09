@@ -142,7 +142,7 @@ export default function DependencyGraph({ graph, affectedNode }: Props) {
   const { nodes, edges } = getLayoutedElements(initialNodes, initialEdges);
 
   return (
-    <div className="h-[500px] w-full overflow-hidden rounded-xl border border-gray-800 bg-gray-950 shadow-inner">
+    <div className="h-[380px] w-full overflow-hidden rounded-xl border border-gray-800 bg-gray-950 shadow-inner sm:h-[500px]">
       <ReactFlow
         nodes={nodes}
         edges={edges}

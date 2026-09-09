@@ -21,7 +21,7 @@ export default function FeedbackControls() {
         Your feedback will help improve future diagnoses.
       </p>
 
-      <div className="mt-5 flex gap-3">
+      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button
           onClick={() =>
             setFeedback("positive")

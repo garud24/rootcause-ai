@@ -13,13 +13,10 @@ export default function AnalysisPanel({ result }: Props) {
       <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
         <h2 className="text-xl font-semibold">Root Cause</h2>
 
-        <p className="mt-3 text-lg">
-          {result.root_cause}
-        </p>
+        <p className="mt-3 text-lg">{result.root_cause}</p>
 
         <p className="mt-2 text-sm text-gray-400">
-          Confidence:{" "}
-          {Math.round(result.confidence * 100)}%
+          Confidence: {Math.round(result.confidence * 100)}%
         </p>
       </section>
 
@@ -27,9 +24,7 @@ export default function AnalysisPanel({ result }: Props) {
       <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold">
-              Affected Component
-            </h2>
+            <h2 className="text-xl font-semibold">Affected Component</h2>
 
             <p className="mt-1 text-sm text-gray-400">
               Component most closely associated with the error
@@ -68,10 +63,7 @@ export default function AnalysisPanel({ result }: Props) {
             </p>
 
             <p className="mt-2 font-semibold">
-              {Math.round(
-                result.graph_confidence * 100
-              )}
-              %
+              {Math.round(result.graph_confidence * 100)}%
             </p>
           </div>
         </div>
@@ -79,24 +71,18 @@ export default function AnalysisPanel({ result }: Props) {
 
       {/* Explanation */}
       <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-        <h2 className="text-xl font-semibold">
-          Explanation
-        </h2>
+        <h2 className="text-xl font-semibold">Explanation</h2>
 
-        <p className="mt-3 text-gray-300">
-          {result.explanation}
-        </p>
+        <p className="mt-3 text-gray-300">{result.explanation}</p>
       </section>
 
       {/* Dependency Graph */}
       <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-        <h2 className="text-xl font-semibold">
-          Dependency Graph
-        </h2>
+        <h2 className="text-xl font-semibold">Dependency Graph</h2>
 
         <p className="mt-2 text-sm text-gray-400">
-          Highlighted node indicates the component most closely associated
-          with the error.
+          Highlighted node indicates the component most closely associated with
+          the error.
         </p>
 
         <div className="mt-3 flex items-center gap-5 text-xs text-gray-400">
@@ -112,24 +98,24 @@ export default function AnalysisPanel({ result }: Props) {
         </div>
 
         <div className="mt-4">
-          <DependencyGraph
-            graph={result.graph}
-            affectedNode={result.affected_node}
-          />
+          {result.graph.nodes.length > 0 ? (
+            <DependencyGraph
+              graph={result.graph}
+              affectedNode={result.affected_node}
+            />
+          ) : (
+            <div className="rounded-lg border border-gray-800 bg-gray-950 p-6 text-sm text-gray-400">
+              No dependency graph could be inferred from this repository.
+            </div>
+          )}
         </div>
       </section>
 
       {/* Evidence */}
-      <ListSection
-        title="Evidence"
-        items={result.evidence}
-      />
+      <ListSection title="Evidence" items={result.evidence} />
 
       {/* Recommended Fixes */}
-      <ListSection
-        title="Recommended Fixes"
-        items={result.recommended_fixes}
-      />
+      <ListSection title="Recommended Fixes" items={result.recommended_fixes} />
 
       {/* Verification Steps */}
       <ListSection
@@ -142,24 +128,14 @@ export default function AnalysisPanel({ result }: Props) {
   );
 }
 
-function ListSection({
-  title,
-  items,
-}: {
-  title: string;
-  items: string[];
-}) {
+function ListSection({ title, items }: { title: string; items: string[] }) {
   return (
     <section className="rounded-xl border border-gray-800 bg-gray-900 p-6">
-      <h2 className="text-xl font-semibold">
-        {title}
-      </h2>
+      <h2 className="text-xl font-semibold">{title}</h2>
 
       <ul className="mt-3 list-disc space-y-2 pl-6 text-gray-300">
         {items.map((item, index) => (
-          <li key={index}>
-            {item}
-          </li>
+          <li key={index}>{item}</li>
         ))}
       </ul>
     </section>

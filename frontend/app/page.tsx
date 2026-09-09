@@ -80,8 +80,8 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-950 text-white">
-      <div className="mx-auto max-w-5xl px-6 py-12">
-        <h1 className="text-4xl font-bold">
+      <div className="mx-auto max-w-5xl px-4 py-8 sm:px-6 sm:py-12">
+        <h1 className="text-3xl font-bold sm:text-4xl">
           RootCause AI
         </h1>
 
@@ -101,7 +101,7 @@ export default function Home() {
             onChange={setErrorText}
           />
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <button
               onClick={handleAnalyze}
               disabled={
