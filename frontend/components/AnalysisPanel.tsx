@@ -1,5 +1,6 @@
 import type { AnalysisResult } from "@/types/analysis";
 import DependencyGraph from "@/components/DependencyGraph";
+import FeedbackControls from "@/components/FeedbackControls";
 
 type Props = {
   result: AnalysisResult;
@@ -135,6 +136,8 @@ export default function AnalysisPanel({ result }: Props) {
         title="Verification Steps"
         items={result.verification_steps}
       />
+
+      <FeedbackControls />
     </div>
   );
 }
